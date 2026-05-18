@@ -1,5 +1,5 @@
 function add(a, b) {
-  return a + b;
+  return a - b; // bug volontaire
 }
 
 function subtract(a, b) {
