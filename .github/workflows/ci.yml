@@ -30,16 +30,19 @@ jobs:
 
   # JOB 2 : S'occupe uniquement d'exécuter les tests unitaires
   test:
-    name: Tests unitaires
+    name: Tests unitaires (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18, 20] # GitHub va lancer 2 conteneurs en même temps
     steps:
       - name: Checkout du code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js 18
+      - name: Setup Node.js dynamique
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: ${{ matrix.node-version }} # Récupère la version de la matrice
           cache: 'npm'
 
       - name: Installation des dépendances
@@ -48,11 +51,11 @@ jobs:
       - name: Tests unitaires
         run: npm test
 
-      # On conserve l'archivage du rapport pour le job de test
+      # On conserve l'archivage du rapport pour chaque version testée
       - name: Upload rapport de couverture
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: coverage-report
+          name: coverage-report-node-${{ matrix.node-version }} # Nom unique par version
           path: coverage/
           retention-days: 7
