@@ -1,4 +1,4 @@
-name: CI Pipeline
+name: Advanced CI/CD Pipeline
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  # JOB 1 : S'occupe uniquement de vérifier la qualité du code
+  # JOB 1 : Vérification de la qualité du code (Syntaxe / Lint)
   lint:
     name: Lint ESLint
     runs-on: ubuntu-latest
@@ -20,7 +20,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-          cache: 'npm'
+          cache: 'npm' # Utilisation du cache pour optimiser le temps (< 3 min)
 
       - name: Installation des dépendances
         run: npm ci
@@ -28,13 +28,14 @@ jobs:
       - name: Lint ESLint
         run: npm run lint
 
-  # JOB 2 : S'occupe uniquement d'exécuter les tests unitaires
+  # JOB 2 : Validation des fonctionnalités (Tests unitaires avec matrice)
   test:
     name: Tests unitaires (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [18, 20] # GitHub va lancer 2 conteneurs en même temps
+        node-version: [18, 20]
+      fail-fast: false # Empêche Node 20 de s'arrêter si Node 18 échoue (pratique pour débugger)
     steps:
       - name: Checkout du code
         uses: actions/checkout@v4
@@ -42,7 +43,7 @@ jobs:
       - name: Setup Node.js dynamique
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }} # Récupère la version de la matrice
+          node-version: ${{ matrix.node-version }}
           cache: 'npm'
 
       - name: Installation des dépendances
@@ -51,11 +52,29 @@ jobs:
       - name: Tests unitaires
         run: npm test
 
-      # On conserve l'archivage du rapport pour chaque version testée
       - name: Upload rapport de couverture
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: coverage-report-node-${{ matrix.node-version }} # Nom unique par version
+          name: coverage-report-node-${{ matrix.node-version }}
           path: coverage/
           retention-days: 7
+
+  # JOB 3 : Déploiement simulé (Nouveauté de la Séance 2)
+  deploy:
+    name: Simulation Déploiement Production
+    runs-on: ubuntu-latest
+    # CRUCIAL : Ce job attend que 'lint' ET 'test' (toutes les versions de la matrice) soient au vert !
+    needs: [lint, test]
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      - name: Déploiement fictif
+        run: |
+          echo "======================================================="
+          echo "🚀 ANALYSE DU PIPELINE TERMINÉE AVEC SUCCÈS !"
+          echo "📦 Application prête pour la production."
+          echo "🔄 Déploiement en cours sur l'environnement simulé..."
+          echo "✅ Déploiement terminé avec succès !"
+          echo "======================================================="
