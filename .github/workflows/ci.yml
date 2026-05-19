@@ -7,16 +7,20 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+# 🌟 CHALLENGE NIVEAU 3 : Gestion de la concurrence
+# Annule automatiquement les exécutions obsolètes sur une même branche
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lint:
     name: Lint ESLint
     runs-on: ubuntu-latest
     steps:
-      # 1. On télécharge d'abord le repo pour que la machine virtuelle ait accès aux fichiers locaux
       - name: Checkout initial
         uses: actions/checkout@v4
 
-      # 2. Maintenant la machine peut trouver et exécuter ton action personnalisée !
       - name: Initialisation Environnement
         uses: ./.github/actions/setup-node-cached
         with:
@@ -33,11 +37,9 @@ jobs:
         node-version: [18, 20]
       fail-fast: false
     steps:
-      # 1. Idem ici, obligatoire pour que la matrice trouve l'action locale
       - name: Checkout initial
         uses: actions/checkout@v4
 
-      # 2. Appel de ton action personnalisée
       - name: Initialisation Environnement
         uses: ./.github/actions/setup-node-cached
         with:
@@ -52,7 +54,8 @@ jobs:
         with:
           name: coverage-report-node-${{ matrix.node-version }}
           path: coverage/
-          retention-days: 7
+          # 🌟 CHALLENGE NIVEAU 2 : Rétention optimisée à 1 jour (au lieu de 7)
+          retention-days: 1
 
       - name: Commenter la PR avec la couverture
         if: github.event_name == 'pull_request' && matrix.node-version == 20
