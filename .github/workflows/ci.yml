@@ -58,6 +58,14 @@ jobs:
           path: coverage/
           retention-days: 7
 
+      # BONUS S2 : Commenter la PR automatiquement avec le rapport (Uniquement si Node 20 pour éviter les doublons)
+      - name: Commenter la PR avec la couverture
+        if: github.event_name == 'pull_request' && matrix.node-version == 20
+        uses: MishaKav/jest-coverage-comment@main
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          coverage-summary-path: ./coverage/coverage-summary.json
+
   deploy:
     name: Simulation Déploiement Production
     runs-on: ubuntu-latest
@@ -80,22 +88,14 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "> 💡 _Rapport généré automatiquement par le pipeline à l'intention de l'équipe de développement._" >> $GITHUB_STEP_SUMMARY
 
-  # SÉANCE 2 : NOUVEAU JOB CONDITIONNEL EN CAS D'ÉCHEC
   notify_failure:
     name: Notification Alerte Échec
     runs-on: ubuntu-latest
-    # Il a besoin de voir si lint ou test se cassent la figure
     needs: [lint, test]
-    # CONDITION CRUCIALE : s'exécute SEULEMENT si un des 'needs' a échoué !
     if: failure()
     steps:
       - name: Simuler l'envoi d'une alerte (Slack/Mail)
         run: |
-          echo "🚨 ATTENTION : Le pipeline a détecté une erreur critique !"
-          echo "❌ Le déploiement a été annulé de manière préventive."
-          echo "📧 Envoi d'un e-mail d'alerte à l'équipe de développement..."
-          
-          # Ajout d'un résumé d'erreur rouge dans l'interface GitHub
           echo "### 🚨 Pipeline en Échec !" >> $GITHUB_STEP_SUMMARY
           echo "⚠️ Une ou plusieurs vérifications ont échoué (**Lint** ou **Tests**)." >> $GITHUB_STEP_SUMMARY
           echo "❌ Le déploiement automatique a été **bloqué** pour protéger la production." >> $GITHUB_STEP_SUMMARY
