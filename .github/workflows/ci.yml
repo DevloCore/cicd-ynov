@@ -8,7 +8,6 @@ on:
   workflow_dispatch:
 
 jobs:
-  # JOB 1 : Vérification de la qualité du code (Syntaxe / Lint)
   lint:
     name: Lint ESLint
     runs-on: ubuntu-latest
@@ -20,7 +19,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-          cache: 'npm' # Utilisation du cache pour optimiser le temps (< 3 min)
+          cache: 'npm'
 
       - name: Installation des dépendances
         run: npm ci
@@ -28,14 +27,13 @@ jobs:
       - name: Lint ESLint
         run: npm run lint
 
-  # JOB 2 : Validation des fonctionnalités (Tests unitaires avec matrice)
   test:
     name: Tests unitaires (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
     strategy:
       matrix:
         node-version: [18, 20]
-      fail-fast: false # Empêche Node 20 de s'arrêter si Node 18 échoue (pratique pour débugger)
+      fail-fast: false
     steps:
       - name: Checkout du code
         uses: actions/checkout@v4
@@ -60,21 +58,31 @@ jobs:
           path: coverage/
           retention-days: 7
 
-  # JOB 3 : Déploiement simulé (Nouveauté de la Séance 2)
   deploy:
     name: Simulation Déploiement Production
     runs-on: ubuntu-latest
-    # CRUCIAL : Ce job attend que 'lint' ET 'test' (toutes les versions de la matrice) soient au vert !
     needs: [lint, test]
     steps:
       - name: Checkout du code
         uses: actions/checkout@v4
 
-      - name: Déploiement fictif
+      # Étape mise à jour pour générer le rapport visuel Markdown
+      - name: Déploiement fictif et résumé du Pipeline
         run: |
           echo "======================================================="
-          echo "🚀 ANALYSE DU PIPELINE TERMINÉE AVEC SUCCÈS !"
-          echo "📦 Application prête pour la production."
-          echo "🔄 Déploiement en cours sur l'environnement simulé..."
+          echo "🚀 Déploiement en cours sur l'environnement simulé..."
           echo "✅ Déploiement terminé avec succès !"
           echo "======================================================="
+          
+          # Écriture du résumé en Markdown dans le fichier spécial $GITHUB_STEP_SUMMARY
+          echo "### 🚀 Résumé de l'exécution du Pipeline Avançé" >> $GITHUB_STEP_SUMMARY
+          echo "Le pipeline s'est exécuté avec succès. Voici le statut des vérifications :" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Vérification | Statut |" >> $GITHUB_STEP_SUMMARY
+          echo "| :--- | :--- |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🧹 **Linting (ESLint)** | ✅ Validé sans erreur |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🧪 **Tests (Node 18)** | ✅ 100% Passés |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🧪 **Tests (Node 20)** | ✅ 100% Passés |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📦 **Déploiement Continu** | 🚀 Livré en Production Fictive |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "> 💡 _Rapport généré automatiquement par le pipeline à l'intention de l'équipe de développement._" >> $GITHUB_STEP_SUMMARY
