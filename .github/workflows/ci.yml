@@ -12,7 +12,11 @@ jobs:
     name: Lint ESLint
     runs-on: ubuntu-latest
     steps:
-      # Appel de ton action personnalisée locale ! (fini les 3 blocs répétitifs)
+      # 1. On télécharge d'abord le repo pour que la machine virtuelle ait accès aux fichiers locaux
+      - name: Checkout initial
+        uses: actions/checkout@v4
+
+      # 2. Maintenant la machine peut trouver et exécuter ton action personnalisée !
       - name: Initialisation Environnement
         uses: ./.github/actions/setup-node-cached
         with:
@@ -29,7 +33,11 @@ jobs:
         node-version: [18, 20]
       fail-fast: false
     steps:
-      # Appel de ton action personnalisée avec la version de la matrice !
+      # 1. Idem ici, obligatoire pour que la matrice trouve l'action locale
+      - name: Checkout initial
+        uses: actions/checkout@v4
+
+      # 2. Appel de ton action personnalisée
       - name: Initialisation Environnement
         uses: ./.github/actions/setup-node-cached
         with:
@@ -46,6 +54,13 @@ jobs:
           path: coverage/
           retention-days: 7
 
+      - name: Commenter la PR avec la couverture
+        if: github.event_name == 'pull_request' && matrix.node-version == 20
+        uses: MishaKav/jest-coverage-comment@main
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          coverage-summary-path: ./coverage/coverage-summary.json
+
   deploy:
     name: Simulation Déploiement Production
     runs-on: ubuntu-latest
@@ -56,9 +71,17 @@ jobs:
 
       - name: Déploiement fictif et résumé du Pipeline
         run: |
+          TZ="Europe/Paris" CURRENT_DATE=$(date +"%d/%m/%Y à %H:%M:%S")
+          
           echo "### 🚀 Résumé de l'exécution du Pipeline Avançé" >> $GITHUB_STEP_SUMMARY
           echo "Le pipeline s'est exécuté avec succès grâce à la Composite Action." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### 📝 Informations de Build" >> $GITHUB_STEP_SUMMARY
+          echo "- 👤 **Déclenché par l'événement :** \`${{ github.event_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- 🆔 **Commit SHA :** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- 📅 **Date d'exécution :** $CURRENT_DATE" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### 📊 Statut des vérifications" >> $GITHUB_STEP_SUMMARY
           echo "| Vérification | Statut |" >> $GITHUB_STEP_SUMMARY
           echo "| :--- | :--- |" >> $GITHUB_STEP_SUMMARY
           echo "| 🧹 **Linting (ESLint)** | ✅ Validé sans erreur |" >> $GITHUB_STEP_SUMMARY
