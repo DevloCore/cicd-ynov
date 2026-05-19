@@ -1,0 +1,28 @@
+name: Setup Node Cached
+description: 'Checkout le code, configure Node.js avec cache et installe les dépendances avec npm ci'
+
+# On définit les paramètres d'entrée (inputs) de notre action
+inputs:
+  node-version:
+    description: 'Version de Node.js à installer'
+    required: true
+    default: '18'
+
+runs:
+  using: 'composite' # Indique à GitHub qu'on combine plusieurs étapes existantes
+  steps:
+    # 1. Téléchargement du dépôt
+    - name: Checkout du code
+      uses: actions/checkout@v4
+
+    # 2. Configuration de Node avec le cache activé
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: 'npm'
+
+    # 3. Installation stricte des paquets
+    - name: Installation des dépendances
+      run: npm ci
+      shell: bash # Requis obligatoirement pour les actions composites

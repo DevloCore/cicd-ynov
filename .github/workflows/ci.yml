@@ -1,4 +1,4 @@
-name: Advanced CI/CD Pipeline
+name: Advanced CI/CD Pipeline with Composite Action
 
 on:
   push:
@@ -12,17 +12,11 @@ jobs:
     name: Lint ESLint
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout du code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js 18
-        uses: actions/setup-node@v4
+      # Appel de ton action personnalisée locale ! (fini les 3 blocs répétitifs)
+      - name: Initialisation Environnement
+        uses: ./.github/actions/setup-node-cached
         with:
           node-version: '18'
-          cache: 'npm'
-
-      - name: Installation des dépendances
-        run: npm ci
 
       - name: Lint ESLint
         run: npm run lint
@@ -35,17 +29,11 @@ jobs:
         node-version: [18, 20]
       fail-fast: false
     steps:
-      - name: Checkout du code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js dynamique
-        uses: actions/setup-node@v4
+      # Appel de ton action personnalisée avec la version de la matrice !
+      - name: Initialisation Environnement
+        uses: ./.github/actions/setup-node-cached
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'npm'
-
-      - name: Installation des dépendances
-        run: npm ci
 
       - name: Tests unitaires
         run: npm test
@@ -58,14 +46,6 @@ jobs:
           path: coverage/
           retention-days: 7
 
-      # BONUS S2 : Commenter la PR automatiquement avec le rapport (Uniquement si Node 20 pour éviter les doublons)
-      - name: Commenter la PR avec la couverture
-        if: github.event_name == 'pull_request' && matrix.node-version == 20
-        uses: MishaKav/jest-coverage-comment@main
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          coverage-summary-path: ./coverage/coverage-summary.json
-
   deploy:
     name: Simulation Déploiement Production
     runs-on: ubuntu-latest
@@ -77,7 +57,7 @@ jobs:
       - name: Déploiement fictif et résumé du Pipeline
         run: |
           echo "### 🚀 Résumé de l'exécution du Pipeline Avançé" >> $GITHUB_STEP_SUMMARY
-          echo "Le pipeline s'est exécuté avec succès. Voici le statut des vérifications :" >> $GITHUB_STEP_SUMMARY
+          echo "Le pipeline s'est exécuté avec succès grâce à la Composite Action." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Vérification | Statut |" >> $GITHUB_STEP_SUMMARY
           echo "| :--- | :--- |" >> $GITHUB_STEP_SUMMARY
@@ -85,8 +65,6 @@ jobs:
           echo "| 🧪 **Tests (Node 18)** | ✅ 100% Passés |" >> $GITHUB_STEP_SUMMARY
           echo "| 🧪 **Tests (Node 20)** | ✅ 100% Passés |" >> $GITHUB_STEP_SUMMARY
           echo "| 📦 **Déploiement Continu** | 🚀 Livré en Production Fictive |" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "> 💡 _Rapport généré automatiquement par le pipeline à l'intention de l'équipe de développement._" >> $GITHUB_STEP_SUMMARY
 
   notify_failure:
     name: Notification Alerte Échec
@@ -94,8 +72,7 @@ jobs:
     needs: [lint, test]
     if: failure()
     steps:
-      - name: Simuler l'envoi d'une alerte (Slack/Mail)
+      - name: Simuler l'envoi d'une alerte
         run: |
           echo "### 🚨 Pipeline en Échec !" >> $GITHUB_STEP_SUMMARY
-          echo "⚠️ Une ou plusieurs vérifications ont échoué (**Lint** ou **Tests**)." >> $GITHUB_STEP_SUMMARY
           echo "❌ Le déploiement automatique a été **bloqué** pour protéger la production." >> $GITHUB_STEP_SUMMARY
