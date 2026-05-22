@@ -69,19 +69,17 @@ jobs:
   docker_build_push:
     name: Build & Push Image Docker
     runs-on: ubuntu-latest
-    needs: [lint, test] # L'image ne se construit que si la CI classique est verte
+    needs: [lint, test]
     permissions:
       contents: read
-      packages: write # Indispensable pour pousser sur le registre GitHub Packages
+      packages: write
     steps:
       - name: Checkout du code
         uses: actions/checkout@v4
 
-      # Configuration de Docker Buildx (permet d'utiliser les fonctions de cache avancées)
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # Connexion au GitHub Container Registry (GHCR) avec le token magique du runner
       - name: Connexion au registre GHCR
         uses: docker/login-action@v3
         with:
@@ -89,7 +87,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Extraction des tags automatiques (:latest et :SHA-du-commit)
       - name: Extraction des métadonnées Docker
         id: meta
         uses: docker/metadata-action@v5
@@ -99,21 +96,20 @@ jobs:
             type=raw,value=latest
             type=sha,format=long
 
-      # Construction et envoi avec le cache GitHub Actions (gha) intégré
       - name: Build et Push de l'image Docker
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          tags: ${{ id.meta.outputs.tags }}
-          labels: ${{ id.meta.outputs.labels }}
-          cache-from: type=gha # Cache Docker optimisé pour GitHub Actions
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
           cache-to: type=gha,mode=max
 
   deploy:
     name: Simulation Déploiement Production
     runs-on: ubuntu-latest
-    needs: [docker_build_push] # La production attend maintenant que l'image Docker soit publiée !
+    needs: [docker_build_push]
     steps:
       - name: Checkout du code
         uses: actions/checkout@v4
