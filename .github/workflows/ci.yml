@@ -144,9 +144,9 @@ jobs:
         run: |
           curl -X POST "${{ secrets.RENDER_STAGING_HOOK }}"
 
-      - name: Health-check post-déploiement
+      - name: Health-check post-déploiement Staging
         run: |
-          echo "Attente du démarrage de l'application..."
+          echo "Attente du démarrage de Staging..."
           sleep 30
           STATUS=$(curl -o /dev/null -s -w "%{http_code}" https://cicd-ynov-staging.onrender.com/health)
           if [ "$STATUS" -eq 200 ]; then
@@ -166,9 +166,9 @@ jobs:
         run: |
           curl -X POST "${{ secrets.RENDER_PROD_HOOK }}"
 
-      - name: Health-check post-déploiement
+      - name: Health-check post-déploiement Prod
         run: |
-          echo "Attente du démarrage de l'application..."
+          echo "Attente du démarrage de Production..."
           sleep 30
           STATUS=$(curl -o /dev/null -s -w "%{http_code}" https://cicd-ynov-prod.onrender.com/health)
           if [ "$STATUS" -eq 200 ]; then
@@ -178,42 +178,27 @@ jobs:
             exit 1
           fi
 
-  deploy:
-    name: Simulation Déploiement Production
+  summary:
+    name: Génération du Résumé de Pipeline
     runs-on: ubuntu-latest
-    needs: [deploy_production]
+    needs: [lint, test, docker_build_push, deploy_staging, deploy_production]
+    if: always()
     steps:
-      - name: Checkout du code
-        uses: actions/checkout@v4
-
-      - name: Déploiement fictif et résumé du Pipeline
+      - name: Créer le Step Summary final
         run: |
           TZ="Europe/Paris" CURRENT_DATE=$(date +"%d/%m/%Y à %H:%M:%S")
           
           echo "### 🚀 Résumé de l'exécution du Pipeline Express & Docker" >> $GITHUB_STEP_SUMMARY
-          echo "Le pipeline s'est exécuté avec succès. L'image est disponible sur GHCR." >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "#### 📝 Informations de Build" >> $GITHUB_STEP_SUMMARY
-          echo "- 👤 **Déclenché par l'événement :** \`${{ github.event_name }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- 🆔 **Commit SHA :** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- 📅 **Date d'exécution :** $CURRENT_DATE" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
           echo "#### 📊 Statut des vérifications" >> $GITHUB_STEP_SUMMARY
-          echo "| Vérification | Statut |" >> $GITHUB_STEP_SUMMARY
+          echo "| Étape | Statut |" >> $GITHUB_STEP_SUMMARY
           echo "| :--- | :--- |" >> $GITHUB_STEP_SUMMARY
-          echo "| 🧹 **Linting (ESLint)** | ✅ Validé sans erreur |" >> $GITHUB_STEP_SUMMARY
-          echo "| 🧪 **Tests (Node 18)** | ✅ 100% Passés |" >> $GITHUB_STEP_SUMMARY
-          echo "| 🧪 **Tests (Node 20)** | ✅ 100% Passés |" >> $GITHUB_STEP_SUMMARY
-          echo "| 🐳 **Image Docker (GHCR)**| ✅ Construite et publiée avec succès |" >> $GITHUB_STEP_SUMMARY
-          echo "| 📦 **Déploiement Continu** | 🚀 Livré en Production Fictive |" >> $GITHUB_STEP_SUMMARY
-
-  notify_failure:
-    name: Notification Alerte Échec
-    runs-on: ubuntu-latest
-    needs: [lint, test, docker_build_push, deploy_staging, deploy_production]
-    if: failure()
-    steps:
-      - name: Simuler l'envoi d'une alerte
-        run: |
-          echo "### 🚨 Pipeline en Échec !" >> $GITHUB_STEP_SUMMARY
-          echo "❌ Le déploiement automatique a été **bloqué** pour protéger la production." >> $GITHUB_STEP_SUMMARY
+          echo "| 🧹 **Linting (ESLint)** | ${{ needs.lint.result == 'success' && '✅ Validé' || '❌ Échoué' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🧪 **Tests Unitaires** | ${{ needs.test.result == 'success' && '✅ Passés' || '❌ Échoué' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🐳 **Image Docker (GHCR)** | ${{ needs.docker_build_push.result == 'success' && '✅ Publiée' || '❌ Échoué' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🧪 **Déploiement Staging** | ${{ needs.deploy_staging.result == 'success' && '✅ En ligne' || '❌ Bloqué/Échoué' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📦 **Déploiement Production** | ${{ needs.deploy_production.result == 'success' && '🚀 Déployé' || '❌ Bloqué/Échoué' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### 📝 Liens des Environnements" >> $GITHUB_STEP_SUMMARY
+          echo "- **Staging URL :** https://cicd-ynov-staging.onrender.com/health" >> $GITHUB_STEP_SUMMARY
+          echo "- **Production URL :** https://cicd-ynov-prod.onrender.com/health" >> $GITHUB_STEP_SUMMARY
+          echo "- *Exécuté le : $CURRENT_DATE*" >> $GITHUB_STEP_SUMMARY
