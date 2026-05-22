@@ -87,41 +87,44 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # 🌟 LA CORRECTION ICI : On force le nom de l'image en minuscules
       - name: Extraction des métadonnées Docker
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          flavor: |
+            lowercase=true
           tags: |
             type=raw,value=latest
             type=sha,format=long
 
-      # Modification : On build SANS push immédiatement pour pouvoir la scanner d'abord
+      # On utilise la variable nettoyée par l'étape "meta" pour le build local
       - name: Build de l'image Docker (Local pour Scan)
         uses: docker/build-push-action@v5
         with:
           context: .
-          push: false # Ne pas pousser tout de suite
-          load: true  # Charge l'image localement dans le runner pour le scan
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          push: false
+          load: true
+          tags: ${{ steps.meta.outputs.tags }} # Modifié pour utiliser le tag nettoyé (sans majuscules)
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # 🛡️ AJOUT CHALLENGE SÉCURITÉ : Scan Trivy
+      # Scan Trivy sur le tag correct et nettoyé
       - name: Scanner l'image avec Trivy
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          image-ref: ${{ env.REGISTRY }}/devlocore/cicd-ynov:latest # Écrit directement en minuscules ici
           format: table
-          exit-code: '1' # Fait échouer le job si des vulnérabilités sont trouvées
+          exit-code: '1'
           severity: CRITICAL,HIGH
 
-      # Si le scan Trivy réussit (aucune faille CRITICAL/HIGH), on pousse officiellement l'image
+      # Push final de l'image validée
       - name: Push de l'image Docker validée
         uses: docker/build-push-action@v5
         with:
           context: .
-          push: true  # Cette fois on pousse sur GHCR !
+          push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
