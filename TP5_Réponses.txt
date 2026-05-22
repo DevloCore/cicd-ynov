@@ -1,0 +1,87 @@
+Ex1 Partie A
+
+Q1
+Le staging est une copie conforme de la prod pour tester le site sans risques avant la mise en ligne. La prod est la version publique utilisée par les vrais clients. Par exemple, le staging utilise une fausse base de données et une banque de test pour les paiements alors que la prod utilise les vrais comptes des utilisateurs.
+
+Q2
+C'est une condition de sécurité qu'on applique sur un environnement dans GitHub. Elle bloque le déploiement tant que certaines étapes comme une validation humaine ou un chrono ne sont pas validées. Ça évite qu'un bug passe en prod automatiquement après un simple push.
+
+Q3
+Le dev push sur main, le pipeline lance les tests et le lint puis déploie en staging. Arrivé au job de prod, le pipeline se met en attente et prévient les validateurs. Dès qu'un admin valide manuellement la demande, le déploiement sur la prod se lance.
+
+Partie B
+
+1 FAUX. Le staging doit ressembler au maximum à la prod pour éviter les surprises et les bugs invisibles en test.
+
+2 VRAI. Vu que l'ancienne version tourne encore à côté, il suffit de changer le routage du trafic pour revenir en arrière en un instant.
+
+3 FAUX. On envoie d'abord la mise à jour à un tout petit groupe d'utilisateurs comme 5% pour vérifier que tout est stable avant de généraliser.
+
+4 VRAI. GitHub prend toujours le secret de l'environnement en priorité s'il a le même nom qu'un secret global du projet.
+
+5 FAUX. Ce mot-clé sert à lier le code aux paramètres du repo pour appliquer les blocages de sécurité et charger les bons secrets.
+
+Ex2 Partie 2.1
+
+Q4
+Pour le staging j'ai laissé le déploiement libre sans restriction d'accès ni validation requise. L'objectif est que cet environnement se mette à jour automatiquement à chaque commit sur main pour pouvoir tester rapidement les modifications en ligne.
+
+Q5
+Je me suis désigné moi-même comme reviewer pour la production. Dans une vraie équipe, ce rôle est donné au Tech Lead ou au Responsable QA car cela permet de s'assurer qu'une personne expérimentée valide la mise en ligne et évite qu'un dev déploie un bug par inattention.
+
+Q6
+Le wait timer est utile si on a des tâches automatisées qui tournent juste avant le déploiement final, comme des tests de charge longs ou des scripts de migration de base de données. Attendre 10 minutes permet de laisser le temps à ces processus de se finir et de vérifier que tout est stable avant de cliquer sur valider.
+
+Ex2 Fin de partie
+
+Q7
+Le job deploy_staging a besoin du job docker_build_push pour se lancer. Il utilise le paramètre environment configuré sur staging. Pour le moment la commande dans run simule simplement un log textuel confirmant que le déploiement automatique est fait.
+
+Q8
+Quand on pousse le commit, les tests et le build docker passent, puis le staging se déploie tout seul. Dès que le staging se termine, le job de production passe en couleur orange (en attente). GitHub bloque le pipeline et affiche une bannière en haut demandant une validation humaine pour autoriser la suite.
+
+Q9
+Si le reviewer rejette la demande, le job de production passe directement en échec et le pipeline s'arrête là pour protéger la prod. Le job n'est pas perdu, on peut cliquer sur le bouton de rechargement (Re-run) pour relancer le processus de validation sans devoir refaire un commit complet.
+
+Ex3 Partie 3.1
+
+Q10
+Render demande le type d'environnement (on choisit Web Service), le nom de l'application pour générer l'URL, le dépôt GitHub contenant le code, et la branche à déployer (main). Ces infos permettent à Render de savoir où récupérer le code, comment l'isoler et sous quel nom le rendre accessible.
+
+Q11
+L'URL publique est sous la forme https://cicd-ynov-votre-nom.onrender.com/health. Pour que ça réponde, il a fallu configurer le serveur Express pour qu'il écoute sur le port fourni par la variable process.env.PORT, car Render attribue un port dynamiquement au démarrage du conteneur.
+
+Q12
+Pour éviter le cold start en production réelle, on peut soit passer sur un plan payant (qui garde l'instance active H24), soit mettre en place un script de ping externe (comme un cron job ou un outil de monitoring type UptimeRobot) qui appelle la route health toutes les 10 minutes pour maintenir le serveur éveillé.
+
+Q13
+J'ai choisi l'approche par Deploy Hook via GitHub Actions. Pour cela, j'ai désactivé l'auto-deploy sur Render, récupéré l'URL du Webhook dans les paramètres de Render, et je l'ai ajoutée dans les secrets d'environnement de mon dépôt GitHub pour l'appeler avec une commande curl dans le pipeline.
+
+Q14
+L'implémentation consiste à ajouter une étape après le curl de déploiement qui attend quelques secondes que le conteneur démarre, puis exécute un curl sur l'URL de l'application en vérifiant le code de statut HTTP. Si le code retourné est 200, le job passe au vert, sinon il s'arrête en erreur.
+
+Q15
+L'autoDeploy est simple à mettre en place mais il déploie dès qu'il y a un push, sans vérifier si les tests passent. Le Deploy Hook demande un peu de configuration dans le YAML mais il donne un contrôle total puisqu'on décide de déployer uniquement si le build Docker et les scans de sécurité ont réussi.
+
+Q16
+Je lui réponds que les tests unitaires ne suffisent pas car ils testent le code de manière isolée. L'environnement de staging permet de valider des éléments que la CI ne peut pas voir comme les connexions réseau réelles, le comportement de la base de données, la configuration des variables d'environnement spécifiques et les performances globales du serveur en situation réelle de déploiement.
+
+Q17
+Pour une fonctionnalité de paiement critique, je choisis la stratégie Canary Release. Elle permet de limiter l'impact financier en cas de bug en redirigeant seulement 1% ou 5% du trafic utilisateur vers la nouvelle version. Si le module de paiement crash, la perte financière est minime et on peut couper l'accès immédiatement, contrairement au Rolling Update qui impacterait tout le monde.
+
+Q18
+La première étape est de faire un rollback immédiat en réinstallant la dernière version stable connue sur la production via l'interface de Render ou en relançant le commit précédent sur GitHub. Une fois le service rétabli pour les utilisateurs, on analyse les logs d'erreur en local ou sur staging pour comprendre le bug, on corrige le code, et on remet en place une restriction pour que ce junior ne puisse plus valider seul la prod.
+
+Q19
+On stocke les secrets communs aux trois environnements comme l'identifiant global du projet au niveau du repository global. En revanche, toutes les variables critiques comme l'URL de la base de données de dev, de staging et de prod, ou les clés d'API spécifiques à chaque environnement doivent être placées directement dans les secrets de chaque GitHub Environment correspondant pour éviter que le code de staging ne touche par erreur à la base de données de production.
+
+Ex5 Recherche documentaire officielle
+
+Sujet A
+La GitHub Deployments API permet d'enregistrer et de suivre informatiquement chaque demande de déploiement ainsi que son statut directement au sein de la plateforme GitHub. Elle génère un historique visuel propre dans l'interface de notre dépôt sous l'onglet Deployments. Dans un pipeline, on l'utilise pour notifier automatiquement GitHub du début d'un déploiement puis de sa réussite ou de son échec, ce qui donne une traçabilité parfaite pour toute l'équipe sans devoir fouiller dans les logs bruts des workflows.
+
+Sujet B
+La différence technique réside dans le masquage et le niveau de sécurité. Une Variable est stockée en texte clair et s'affiche normalement dans les logs d'exécution du pipeline, alors qu'un Secret est chiffré par GitHub et son contenu est automatiquement masqué par des astérisques s'il apparaît dans les logs de la console. On utilise une variable pour des données non sensibles comme le niveau de log de l'application ou le port d'écoute du serveur. On utilise un secret pour des données critiques comme une clé d'API de paiement ou le mot de passe d'accès à la base de données de production.
+
+Sujet C
+Un Preview Environment sur Render est un environnement éphémère généré automatiquement dès qu'une Pull Request est ouverte sur GitHub. Render déploie une instance isolée basée sur le code de la branche de la PR pour permettre aux développeurs et aux testeurs de voir et manipuler les modifications en direct. C'est extrêmement utile pour la revue de code car on peut valider le rendu visuel et fonctionnel avant la fusion. Cela ne remplace pas le staging, car le staging sert de filtre final global avec des configurations lourdes et pérennes avant la mise en production.
