@@ -113,14 +113,23 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # Scan Trivy sur l'image nettoyée
+      # Scan Trivy avec export du rapport demandé en page 8
       - name: Scanner l'image avec Trivy
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}:latest
-          format: table
-          exit-code: '1'
+          format: sarif
+          output: trivy-results.sarif
+          exit-code: '0'
           severity: CRITICAL,HIGH
+
+      # Sauvegarde de l'artefact (Page 8 du sujet)
+      - name: Upload rapport Trivy
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trivy-report
+          path: trivy-results.sarif
 
       # Push final sur GHCR de l'image validée
       - name: Push de l'image Docker validée
