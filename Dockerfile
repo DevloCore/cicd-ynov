@@ -1,7 +1,7 @@
 # Dockerfile — Application Calculator API 
   
 # ═══ STAGE 1 : BUILD & TEST ════════════════════════ 
-FROM node:18-alpine AS builder 
+FROM node:20-alpine AS builder
 
 WORKDIR /app 
   
@@ -18,7 +18,7 @@ COPY . .
 RUN npm test 
   
 # ═══ STAGE 2 : RUNTIME ═════════════════════════════ 
-FROM node:18-alpine AS runtime 
+FROM node:20-alpine AS runtime
   
 WORKDIR /app 
   
